@@ -2,3 +2,5 @@ venv
 .env
 myenv
 api.py
+dejavu-fonts-ttf-2.37
+token_usage.log
