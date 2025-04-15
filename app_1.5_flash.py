@@ -17,34 +17,59 @@ import PyPDF2
 import soundfile as sf
 
 import time
-import logging
+import os
 from datetime import datetime
+import csv
+import logging
 
-# Configure logging
-logging.basicConfig(
-    filename='token_usage.log',
-    level=logging.INFO,
-    format='%(asctime)s - %(message)s'
-)
+# Create logs directory if it doesn't exist
+LOGS_DIR = "logs"
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+def get_daily_log_file():
+    """Returns a log file path with today's date"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    return os.path.join(LOGS_DIR, f"token_usage_{today}.csv")
+
+def init_log_file():
+    """Initialize CSV log file with headers if it doesn't exist"""
+    log_file = get_daily_log_file()
+    if not os.path.exists(log_file):
+        with open(log_file, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                "timestamp",
+                "feature",
+                "input_tokens",
+                "output_tokens",
+                "total_tokens",
+                "model_version"
+            ])
 
 def log_token_usage(feature_name, prompt, response):
-    """Log token usage information"""
+    """Log token usage information to daily CSV"""
     try:
-        # Estimate tokens (Gemini doesn't provide exact token count in response)
-        input_tokens = len(prompt.split()) // 0.75  # Approximate word to token conversion
-        output_tokens = len(response.split()) // 0.75 if response else 0
+        # Estimate tokens
+        input_tokens = len(str(prompt).split()) // 0.75
+        output_tokens = len(str(response).split()) // 0.75 if response else 0
         
-        log_message = (
-            f"FEATURE: {feature_name} | "
-            f"INPUT_TOKENS: ~{int(input_tokens)} | "
-            f"OUTPUT_TOKENS: ~{int(output_tokens)} | "
-            f"TOTAL_TOKENS: ~{int(input_tokens + output_tokens)}"
-        )
-        logging.info(log_message)
+        # Initialize log file if needed
+        init_log_file()
+        
+        # Write to today's log file
+        with open(get_daily_log_file(), 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                datetime.now().isoformat(),
+                feature_name,
+                int(input_tokens),
+                int(output_tokens),
+                int(input_tokens + output_tokens),
+                "gemini-1.5-flash"  # or your model version
+            ])
+            
     except Exception as e:
-        logging.error(f"Error logging token usage: {e}")
-
-
+        print(f"Error logging token usage: {e}")  # Fallback to console if file writing fails
 
 # Load environment variables
 load_dotenv()

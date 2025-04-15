@@ -1,0 +1,12 @@
+timestamp,feature,input_tokens,output_tokens,total_tokens,model_version
+2025-04-14T15:53:17.771213,get_gemini_response_question,129,2384,2513,gemini-2.0-flash-lite
+2025-04-14T15:53:18.286254,get_gemini_response_question,129,3369,3498,gemini-2.0-flash-lite
+2025-04-14T15:56:27.980371,get_gemini_response_question,129,2912,3041,gemini-2.0-flash-lite
+2025-04-14T16:08:47.911936,get_gemini_response_question,129,6505,6634,gemini-2.0-flash-lite
+2025-04-14T16:55:02.582810,get_gemini_response_question,12,312,324,gemini-2.0-flash-lite
+2025-04-14T16:55:14.383844,get_gemini_response_question,12,261,273,gemini-2.0-flash-lite
+2025-04-14T16:55:45.339378,get_gemini_response_question,12,400,412,gemini-2.0-flash-lite
+2025-04-14T16:56:06.663612,get_gemini_response_question,129,2950,3079,gemini-2.0-flash-lite
+2025-04-14T16:58:53.098688,get_gemini_response_question,129,1828,1957,gemini-1.5-flash
+2025-04-14T16:59:36.077621,get_gemini_response_question,12,328,340,gemini-1.5-flash
+2025-04-14T17:06:35.607791,get_gemini_response_question,12,496,508,gemini-2.5-pro

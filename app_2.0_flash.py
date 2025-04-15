@@ -16,7 +16,60 @@ from faster_whisper import WhisperModel
 import PyPDF2
 import soundfile as sf
 
+import time
+import os
+from datetime import datetime
+import csv
+import logging
 
+# Create logs directory if it doesn't exist
+LOGS_DIR = "logs"
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+def get_daily_log_file():
+    """Returns a log file path with today's date"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    return os.path.join(LOGS_DIR, f"token_usage_{today}.csv")
+
+def init_log_file():
+    """Initialize CSV log file with headers if it doesn't exist"""
+    log_file = get_daily_log_file()
+    if not os.path.exists(log_file):
+        with open(log_file, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                "timestamp",
+                "feature",
+                "input_tokens",
+                "output_tokens",
+                "total_tokens",
+                "model_version"
+            ])
+
+def log_token_usage(feature_name, prompt, response):
+    """Log token usage information to daily CSV"""
+    try:
+        # Estimate tokens
+        input_tokens = len(str(prompt).split()) // 0.75
+        output_tokens = len(str(response).split()) // 0.75 if response else 0
+        
+        # Initialize log file if needed
+        init_log_file()
+        
+        # Write to today's log file
+        with open(get_daily_log_file(), 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                datetime.now().isoformat(),
+                feature_name,
+                int(input_tokens),
+                int(output_tokens),
+                int(input_tokens + output_tokens),
+                "gemini-2.0-flash-lite"  # or your model version
+            ])
+            
+    except Exception as e:
+        print(f"Error logging token usage: {e}")  # Fallback to console if file writing fails
 
 # Load environment variables
 load_dotenv()
@@ -89,8 +142,9 @@ def get_gemini_feedback(transcribed_text, resume_content):
     3. A score out of 10.
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash-lite')
         response = model.generate_content([prompt])
+        log_token_usage("get gemini feedback", prompt,response)
         return response.text if response else "No response from Gemini."
     except Exception as e:
         st.error(f"Error generating feedback: {e}")
@@ -111,9 +165,23 @@ def ensure_font_exists(font_path):
 
 def get_gemini_response(input_text, pdf_content, prompt):
     """Generate a response using Google Gemini API."""
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-2.0-flash-lite')
     response = model.generate_content([input_text, pdf_content[0], prompt])
-    return response.text
+    response_text = response.text if response else "No response from Gemini."
+    
+    # Log token usage
+    log_token_usage("get_gemini_response", prompt, response_text)
+    return response_text
+
+def get_gemini_response_question(prompt):
+    """Generate a response using Google Gemini API."""
+    model = genai.GenerativeModel('gemini-2.0-flash-lite')
+    response = model.generate_content([prompt])
+    response_text = response.text if response else "No response from Gemini."
+    
+    # Log token usage
+    log_token_usage("get_gemini_response_question", prompt, response_text)
+    return response_text
 
 def input_pdf_setup(uploaded_file):
     """Convert first page of uploaded PDF to an image and encode as base64."""
@@ -155,12 +223,7 @@ def generate_pdf(updated_resume_text):
     pdf.output(pdf_output_path, "F")
     return pdf_output_path
 
-#function for independently generate output
-def get_gemini_response_question(prompt):
-    """Generate a response using Google Gemini API."""
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content([prompt])
-    return response.text
+
 def extract_audio(video_path):
     """Extracts audio from a video file and saves it as a WAV file."""
     audio_path = video_path.replace(".mp4", ".wav")
@@ -273,7 +336,7 @@ if selected_tab == "🏆 Resume Analysis":
 
         "interview_questions": """
         You are an AI-powered interview coach.
-        Generate {num_questions} interview questions based on the given job description, 
+        Generate 10 interview questions based on the given job description, 
         focusing on the required skills and expertise.
         """,
 
@@ -308,6 +371,11 @@ if selected_tab == "🏆 Resume Analysis":
                     st.markdown(href, unsafe_allow_html=True)
             else:
                 st.error("Error generating updated resume.")
+        elif submit_interview and uploaded_file:
+            response=get_gemini_response(input_text, pdf_content, input_prompts["question_bank"])
+            st.subheader("Generate Interview Questions")
+            st.write(response)
+
 # Question Bank
 elif selected_tab == "📚 Question Bank":
     st.subheader("📘 AI-Generated Interview Questions")
@@ -712,16 +780,18 @@ elif selected_tab == "🛠️ Code Debugger":
                 try:
                     model = genai.GenerativeModel('gemini-1.5-flash')
                     response = model.generate_content([prompt])
-
+                    
                     if response:
+                        response_text = response.text  # Get the actual text response
+                        log_token_usage("Code Debugger", prompt, response_text)
+                        
                         st.subheader("✅ Corrected Code")
-                        st.code(response.text, language="python")
+                        st.code(response_text, language="python")
                     else:
                         st.error("No response from Gemini.")
                 except Exception as e:
                     st.error(f"Error: {e}")
-
-
+                    logging.error(f"Code Debugger Error: {str(e)}")
 
 
 # Custom CSS for bottom-right placement and pop-up effect
